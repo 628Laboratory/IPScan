@@ -38,7 +38,9 @@ namespace IPScan
         //是否继续扫描,默认为继续
         private volatile int isScan = 1;
         //采用了多少种扫描方法
-        int scanMethodNum = 1;
+        int scanMethodNum = 2;
+        //本机ip地址
+        int 
         public Form1()
         {
             InitializeComponent();
@@ -68,22 +70,19 @@ namespace IPScan
 
         }
         //将地址解析为整数类型，
-        private void ResolveIp(string ipstart, string ipend)
+        private void ResolveIpRange(string ipstart, string ipend)
         {
-            string[] ipArr = ipstart.Split('.');//解析起始地址           
-            Int64 ipS1 = Int64.Parse(ipArr[0]);
-            Int64 ipS2 = Int64.Parse(ipArr[1]);
-            Int64 ipS3 = Int64.Parse(ipArr[2]);
-            Int64 ipS4 = Int64.Parse(ipArr[3]);
-
-            string[] ipEndArr = ipend.Split('.');//解析结束地址           
+            startIp = ResolveIp(ipstart);//解析起始地址      
+            endIp = ResolveIp(ipend);//解析结束地址           
+        }
+        //将地址解析为整数类型
+        private long ResolveIp(string ip){
+            string[] ipEndArr = ip.Split('.');//解析结束地址           
             Int64 ipE1 = Int64.Parse(ipEndArr[0]);
             Int64 ipE2 = Int64.Parse(ipEndArr[1]);
             Int64 ipE3 = Int64.Parse(ipEndArr[2]);
             Int64 ipE4 = Int64.Parse(ipEndArr[3]);
-
-            startIp = ipS1 * 256 * 256 * 256 + ipS2 * 256 * 256 + ipS3 * 256 + ipS4;
-            endIp = ipE1 * 256 * 256 * 256 + ipE2 * 256 * 256 + ipE3 * 256 + ipE4;
+            return ipE1 * 256 * 256 * 256 + ipE2 * 256 * 256 + ipE3 * 256 + ipE4;
         }
         //将整数类型转换成IP地址形式
         private string IpTrs(long ipresolved)
@@ -96,7 +95,6 @@ namespace IPScan
             long k = num / (long)256;
             num -= k * (long)256;
             long m = num;
-
             string strip = i.ToString() + "." + j.ToString() + "." + k.ToString() + "." + m.ToString();
             return strip;
         }
@@ -117,7 +115,7 @@ namespace IPScan
             Scan.Enabled = false;
             Refresh();
             //将IP转换为整数数字
-            ResolveIp(startIP, endIP);
+            ResolveIpRange(startIP, endIP);
             //表示需要扫描的范围上限的总数
             progressBar1.Maximum = Convert.ToInt32(endIp - startIp + 1) * scanMethodNum;
             if (startIP == "" || endIP == "")
