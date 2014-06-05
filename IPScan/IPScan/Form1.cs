@@ -2,7 +2,6 @@
 // decription： scan active ip
 // creator：wy yx
 // creatTime：2014-5-17
-//测试
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -144,33 +143,10 @@ namespace IPScan
         {
             if (ipList != null && ipList.Count > 0)
             {
+                wipeRepeatIP();
                 foreach (IPMessage ip in ipList)
                 {
-                    IPList.Items.Add(ip.IpAds);
-                    if (ip.state == 1)
-                    {
-                        IPList.Items.Add("状态：活动");
-                    }
-                    else
-                    {
-                        IPList.Items.Add(ip.IpAds + "状态：下线");
-                    }
-                    if (ip.equipType == IPMessage.COMPUTER)
-                    {
-                        IPList.Items.Add("类型：主机");
-                    }
-                    else if (ip.equipType == IPMessage.ROUTER)
-                    {
-                        IPList.Items.Add("类型：路由器");
-                    }
-                    else if (ip.equipType == IPMessage.CAN_NOT_JUDGE)
-                    {
-                        IPList.Items.Add("类型：类型 无法识别");
-                    }
-                    //else
-                    //{
-                    //    IPList.Items.Add("类型：未开启服务");
-                    //}
+                    IPList.Items.Add(ip.IpAds + " " + ip.equipTypeString + " " + ip.state + " " + ip.scanByWay);
                 }
             }
             else
@@ -207,15 +183,23 @@ namespace IPScan
                 creatPingThread = new Thread(IP.ScanIP);
                 IP.IpAds = ip;
                 IP.form = this;
+                //WaitCallback myCallback = new  WaitCallback(IP.ScanIP);
+                //ThreadPool.QueueUserWorkItem(myCallback);
                 creatPingThread.IsBackground = true;
                 creatPingThread.Start();
                 Thread.Sleep(5);
                 #endregion
-
-
             }
-            Thread.Sleep(2000);
+            
+            Thread.Sleep(6000);
             //去除重复的扫描结果
+            wipeRepeatIP();
+            finishInvokeControl();
+
+        }
+        //去除重复的扫描结果
+        private void wipeRepeatIP()
+        {
             for (int i = 0; i < ipList.Count; i++)
             {
                 for (int j = i + 1; j < ipList.Count; j++)
@@ -228,7 +212,6 @@ namespace IPScan
                     }
                 }
             }
-            finishInvokeControl();
 
         }
         //跨线程控制控件需要用到委托的方法
@@ -275,11 +258,12 @@ namespace IPScan
     //此类用于线程调用时，存数据
     public class IPMessage
     {
-        //设备类型的宏定义
-        public const int CAN_NOT_JUDGE = -1;//无法识别的设备
-        public const int NOT_JUDGE = 0;//未开启服务无法识别
+        #region 设备类型的宏定义
+        public const int CAN_NOT_JUDGE = -1;//扫到但无法识别
+        public const int NOT_JUDGE = 0;//未开启服务
         public const int COMPUTER = 1;//电脑主机
         public const int ROUTER = 2;//路由器
+        #endregion
         #region 导入ARP_API
         [DllImport("iphlpapi.dll")]
         static extern int SendARP(Int32 DestIP, Int32 SrcIP, ref Int64 MacAddr, ref Int32 PhyAddrLen);
@@ -293,16 +277,19 @@ namespace IPScan
         public string macDest;
         //是否是活动主机（0-不是活动 1-活动主机）
         public int state = 0;
-        //设备类型(-1-无法识别 0-未识别 1-电脑主机 2-路由器...)
+        //设备类型(扫到但无法识别 未开启服务 电脑主机 路由器)
+        public string equipTypeString = "未开启服务";
         public int equipType = 0;
         //引用控件类
         public Form1 form;
+        //通过什么方法扫描到的
+        public string scanByWay;
 
         public IPMessage() { }
-        public void ScanIP() //设备地址扫描
+        public void ScanIP(Object o) //设备地址扫描
         {
             arpScan();
-            //pingScan();
+            pingScan();
             if (this.state == 1)
             {
                 judgeEquipType();
@@ -337,6 +324,7 @@ namespace IPScan
                     }
                     macDest = macAddress.ToString();
                     this.state = 1;
+                    this.scanByWay = "ARP";
                     form.ipList.Add(this);
                     //Console.WriteLine(this.IpAds + ":" + Result + ":" + macDest);
                 }
@@ -359,6 +347,7 @@ namespace IPScan
                 if (reply.Status == IPStatus.Success)
                 {
                     this.state = 1;
+                    this.scanByWay = "Ping";
                     form.ipList.Add(this);
                 }
             }
@@ -388,14 +377,17 @@ namespace IPScan
             int num = Int32.Parse(outprint, System.Globalization.NumberStyles.HexNumber);
             if (num == 76 || num == 72)//主机
             {
+                this.equipTypeString = "主机";
                 this.equipType = 1;
             }
             else if (num == 4)//路由器
             {
+                this.equipTypeString = "路由器";
                 this.equipType = 2;
             }
             else//无法识别
             {
+                this.equipTypeString = "扫到但无法识别";
                 this.equipType = -1;
             }
 
