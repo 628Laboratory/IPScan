@@ -38,9 +38,9 @@ namespace IPScan
         //是否继续扫描,默认为继续
         private volatile int isScan = 1;
         //采用了多少种扫描方法
-        int scanMethodNum = 2;
+        int scanMethodNum = 1;
         //本机ip地址
-        int 
+        string selfIp;
         public Form1()
         {
             InitializeComponent();
@@ -76,7 +76,8 @@ namespace IPScan
             endIp = ResolveIp(ipend);//解析结束地址           
         }
         //将地址解析为整数类型
-        private long ResolveIp(string ip){
+        private long ResolveIp(string ip)
+        {
             string[] ipEndArr = ip.Split('.');//解析结束地址           
             Int64 ipE1 = Int64.Parse(ipEndArr[0]);
             Int64 ipE2 = Int64.Parse(ipEndArr[1]);
@@ -98,9 +99,22 @@ namespace IPScan
             string strip = i.ToString() + "." + j.ToString() + "." + k.ToString() + "." + m.ToString();
             return strip;
         }
+        private string GetIP() //get local ip
+        {
+            IPHostEntry tempHost = new IPHostEntry();
+            tempHost = Dns.Resolve(Dns.GetHostName());
+            if (tempHost.AddressList.Length == 1)
+            {
+                return tempHost.AddressList[0].ToString();
+            }
+            else
+                return tempHost.AddressList[1].ToString();
+        }
         //按钮扫描
         private void Scan_Click(object sender, EventArgs e)
         {
+            //获取本机ip
+            selfIp = GetIP();
             //用于存储scan线程
             Thread scanThread;
             isScan = 1;
@@ -131,12 +145,13 @@ namespace IPScan
             }
             catch { }
         }
-
+        //停止扫描
         private void Stop_Click(object sender, EventArgs e)
         {
             this.isScan = 0;
             Scan.Enabled = true;
         }
+        //显示扫描结果
         private void printActive_Click(object sender, EventArgs e)
         {
             if (ipList != null && ipList.Count > 0)
@@ -155,6 +170,7 @@ namespace IPScan
 
         private void clear_Click(object sender, EventArgs e)
         {
+            MessageBox.Show(this.selfIp);
             IPList.Items.Clear();
         }
         //根据此方法创建一个scan线程
@@ -188,7 +204,7 @@ namespace IPScan
                 Thread.Sleep(5);
                 #endregion
             }
-            
+
             Thread.Sleep(6000);
             //去除重复的扫描结果
             wipeRepeatIP();
@@ -304,7 +320,7 @@ namespace IPScan
                 Int32 length = 6;
                 int Result = SendARP(remote, 0, ref macInfo, ref length);
                 string temp = Convert.ToString(macInfo, 16).PadLeft(12, '0').ToUpper();
-                
+
                 if (SendARP(remote, 0, ref macInfo, ref length) == 0)
                 {
                     int x = 12;
@@ -326,9 +342,9 @@ namespace IPScan
                     form.ipList.Add(this);
                     //Console.WriteLine(this.IpAds + ":" + Result + ":" + macDest);
                 }
-                
+
             }
-            catch{ }
+            catch { }
         }
         //使用ping扫描IP
         public void pingScan()
@@ -610,5 +626,5 @@ namespace IPScan
             return outStr;
         }
     }
-    #endregion 
+    #endregion
 }
